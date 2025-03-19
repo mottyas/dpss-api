@@ -1,5 +1,8 @@
+import json
+import logging
 from typing import Union
 from pathlib import Path
+from pprint import pprint
 
 import uvicorn
 from fastapi import FastAPI
@@ -12,7 +15,7 @@ from depss.vulnerdb import VulnerabilityDB
 from depss.utils import check_is_vulnerable, orjson_load_file, orjson_dump_file
 
 from database_connector.servicedb import ServiceDB
-# from database_connector import
+
 
 DATA_DIR = Path('/home/motya/malife/projects/depss/data')
 
@@ -44,28 +47,11 @@ def save_config(scan_config: ScanConfigSchema) -> None:
 @app.post('/scan_by_config_with_report')
 def scan_by_config_with_report(scan_config: ScanConfigSchema) -> None:
 
-    # project_config = ProjectConfigSchema(
-    #     name='first_proj',
-    #     type='python',
-    #     dir=PROJECT_DIR,
-    #     description='first_proj',
-    # )
-    #
-    # scan_config = ScanConfigSchema(
-    #     host=HOST,
-    #     user=USER,
-    #     secret=PASSWORD,
-    #     name='first_scan',
-    #     projects=[project_config],
-    # )
-
-
     scanner = Scanner(scan_config=scan_config)
 
     scanner.save_project_requirements()
     project_dir = DATA_DIR / scanner.config.projects[0].type / scanner.config.projects[0].name
 
-    import logging
 
     logging.error(f'project_dir: >{project_dir}<')
 
@@ -78,9 +64,6 @@ def scan_by_config_with_report(scan_config: ScanConfigSchema) -> None:
 
     parser = ParserSBOM(Path('./') / 'sbom.json')
 
-    # logging.error(f'parser: {parser.sbom}')
-
-    # components = []
     for component in parser.sbom.get('components', []):
         if not component.get('purl'):
             logging.error(f'component: {component}')
@@ -88,8 +71,6 @@ def scan_by_config_with_report(scan_config: ScanConfigSchema) -> None:
     components = parser.get_components()
 
     db_path = Path('/home/motya/malife/projects/depss/vulnerabilities/vulner.db')
-    # found_vulnerabilities = []
-    # vulner_db = VulnerabilityDB(db_path)
     package_folder = '/home/motya/malife/projects/depss/vulnerabilities/packages/pyup-1.20250224.001/content'
     with VulnerabilityDB(db_path=db_path, package_folder=package_folder) as vulner_db:
 
@@ -131,24 +112,18 @@ def scan_by_config_with_report(scan_config: ScanConfigSchema) -> None:
                 )
             )
 
-        # vulner_db.connection.close()
-
         reporter = Reporter(
             detected_vulnerabilities=detected_vulnerabilities
         )
 
         report = reporter.generate_report()
 
-        from pprint import pprint
-
         pprint(report)
-        import json
         orjson_dump_file(
             output_dir=DATA_DIR,
             filename='kek.json',
             data=json.loads(report.model_dump_json())
         )
-        # return report
 
 
 @app.get("/get_report")
