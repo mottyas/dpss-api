@@ -177,7 +177,10 @@ data/
 vulnerabilities/
 
 # Test app dir
-#app/
+app/
 
 # DB creator app dir
 dbcreator/
+
+# DB creator app dir
+databases/
