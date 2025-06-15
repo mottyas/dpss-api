@@ -8,9 +8,15 @@ from dpss.models import ScanConfigSchema, ReportModelSchema
 from dpss.dpss import DependencySecurityScanner
 
 from configs.settings import SERVICE_DB_PATH, DATA_DIR, VULNER_DB_PATH, VULNER_PACKAGES_DIR_PATH
-from dbconnector.servicedb import ServiceDB
+from dbconnector.servicedb.servicedb import ServiceDB
 from schemas.pydantic.scanner_schemas import CreateScanConfigSchema, UpdateScanConfigSchema
-
+from models.scanner_models import (
+    ScanConfigGetDTO,
+    ReportFullDTO,
+    ReportGetDTO,
+    VulnerGetDTO,
+    VulnerBasicGetDTO,
+)
 
 class ScannerService:
     """Класс работы сервиса сканера"""
@@ -20,7 +26,8 @@ class ScannerService:
 
         self.service_db_path = SERVICE_DB_PATH
 
-    def get_config(self, config_id: int | str) -> ScanConfigSchema:
+    @staticmethod
+    def get_config(config_id: int) -> ScanConfigGetDTO:
         """
         Метод получения конфигурации сканирования
 
@@ -28,22 +35,21 @@ class ScannerService:
         :return: Конфигурация скнирования
         """
 
-        is_id = True if isinstance(config_id, int) else False
-
-        with ServiceDB(self.service_db_path) as service_db:
-            scan_config = service_db.get_scan_config(config_id, is_id)
+        with ServiceDB() as service_db:
+            scan_config = service_db.get_scan_config(config_id)
 
         return scan_config
 
-    def get_all_configs(self) -> list[ScanConfigSchema]:
+    @staticmethod
+    def get_all_configs() -> list[ScanConfigGetDTO]:
         """
         Метод получения всех конфигов сканирования
 
         :return: Список найденных конфигураций
         """
 
-        with ServiceDB(self.service_db_path) as service_db:
-            scan_configs = service_db.get_all_configs()
+        with ServiceDB() as service_db:
+            scan_configs = service_db.get_all_scan_configs()
 
         return scan_configs
 
@@ -113,3 +119,37 @@ class ScannerService:
         dpss.run()
 
         return dpss.report
+
+    @staticmethod
+    def get_report_by_id(report_id: int) -> ReportFullDTO:
+        """
+        Метод получения отчета сканирования
+
+        :param report_id: Идентификатор отчета
+        :return: Отчет с результатами сканирования
+        """
+        with ServiceDB() as service_db:
+            report = service_db.get_report(report_id)
+
+        return report
+
+    @staticmethod
+    def get_reports() -> list[ReportGetDTO]:
+        with ServiceDB() as service_db:
+            reports = service_db.get_all_reports()
+
+        return reports
+
+    @staticmethod
+    def get_vulner_data(vulner_id: str) -> VulnerGetDTO:
+        with ServiceDB() as service_db:
+            vulner_data = service_db.get_vulner_data(vulner_id)
+
+        return vulner_data
+
+    @staticmethod
+    def get_vulners(page: int = 1, page_size = 20) -> list[VulnerBasicGetDTO]:
+        with ServiceDB() as service_db:
+            vulners_data = service_db.get_vulners(page, page_size)
+
+        return vulners_data

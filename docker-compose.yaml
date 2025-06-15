@@ -1,0 +1,53 @@
+
+services:
+  db:
+    image: postgres:latest
+    container_name: postgres_db_dpss
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dpss_service_db
+    ports:
+      - 5432:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+#      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+#  app:
+#    build: ./src
+#    container_name: dpss_api_backend
+#    restart: always
+#    depends_on:
+#      - db
+#    ports:
+#      - 8000:8000
+#    environment:
+#      DATABASE_URL: "postgresql://postgres:postgres@db:5432/dpss_service_db"
+
+#    image: postgres:latest
+#      container_name: postgres_db
+#      restart: always
+#      environment:
+#        POSTGRES_USER: postgres
+#        POSTGRES_PASSWORD: postgres
+#        POSTGRES_DB: model_app_db
+#      ports:
+#        - "5432:5432"
+#      volumes:
+#        - db_data:/var/lib/postgresql/data
+#        - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+#
+#      app:
+#        build: .
+#        container_name: model_app
+#        restart: always
+#        depends_on:
+#          - db
+#        ports:
+#          - "8000:8000"
+#        environment:
+#          DATABASE_URL: "postgresql://postgres:postgres@db:5432/model_app_db"
+#
+volumes:
+  db_data:
