@@ -1,6 +1,7 @@
 """
 Модуль маршрутов для работы сканера
 """
+import logging
 
 from fastapi import (
     APIRouter,
@@ -14,6 +15,10 @@ from models.scanner_models import (
     ReportFullDTO,
     ReportGetDTO,
     VulnerGetDTO,
+    VulnersBasicsGetDTO,
+    ScanConfigAddDTO,
+    AddItemResponseDTO,
+    ProjectConfigGetDTO,
     VulnerBasicGetDTO,
 )
 from services.scanner_service import ScannerService
@@ -32,6 +37,10 @@ scanner_router = APIRouter(prefix="/v1/scan", tags=["scan_configs"])
 def get_scan_config_by_id(item_id: int, scanner_service: ScannerService = Depends()):
     return scanner_service.get_config(item_id)
 
+@scanner_router.get(path='/projects/{item_id}', response_model=ProjectConfigGetDTO)
+def get_scan_config_by_id(item_id: int, scanner_service: ScannerService = Depends()):
+    return scanner_service.get_project_config(item_id)
+
 
 # @scanner_router.get(path='/confs/name/{name}', response_model=ScanConfigSchema)
 # def get_scan_config_by_name(name: str, scanner_service: ScannerService = Depends()):
@@ -48,11 +57,13 @@ def delete_scan_config_by_id(item_id: int, scanner_service: ScannerService = Dep
 #     return scanner_service.delete_config(name)
 
 
-@scanner_router.post(path='/confs/', response_model=ScanConfigSchema)
+@scanner_router.post(path='/confs', response_model=AddItemResponseDTO)
 def make_new_scan_config(
-        scan_conf_schema: CreateScanConfigSchema,
+        scan_conf_schema: ScanConfigAddDTO,
         scanner_service: ScannerService = Depends(),
 ):
+    print(f'{scan_conf_schema=}')
+    logging.error(f'{scan_conf_schema=}')
     return scanner_service.add_config(scan_conf_schema)
 
 
@@ -74,15 +85,15 @@ def get_report_by_id(item_id: int, scanner_service: ScannerService = Depends()):
     return scanner_service.get_report_by_id(item_id)
 
 @scanner_router.get(path='/reports', response_model=list[ReportGetDTO])
-def get_report_by_id(scanner_service: ScannerService = Depends()):
+def get_reports(scanner_service: ScannerService = Depends()):
     return scanner_service.get_reports()
 
 @scanner_router.get(path='/vulners/{item_id}', response_model=VulnerGetDTO)
 def get_vulner_by_id(item_id: str, scanner_service: ScannerService = Depends()):
     return scanner_service.get_vulner_data(item_id)
 
-@scanner_router.get(path='/vulners', response_model=list[VulnerBasicGetDTO])
-def get_vulner_by_id(page: int = 1, page_size = 20, scanner_service: ScannerService = Depends()):
+@scanner_router.get(path='/vulners', response_model=VulnersBasicsGetDTO)
+def get_vulners(page: int = 1, page_size: int = 20, scanner_service: ScannerService = Depends()):
     return scanner_service.get_vulners(page, page_size)
 
 

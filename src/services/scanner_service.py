@@ -15,6 +15,11 @@ from models.scanner_models import (
     ReportFullDTO,
     ReportGetDTO,
     VulnerGetDTO,
+    VulnersBasicsGetDTO,
+    ScanConfigAddDTO,
+    ProjectConfigAddDTO,
+    ProjectConfigGetDTO,
+    AddItemResponseDTO,
     VulnerBasicGetDTO,
 )
 
@@ -41,6 +46,20 @@ class ScannerService:
         return scan_config
 
     @staticmethod
+    def get_project_config(config_id: int) -> ProjectConfigGetDTO:
+        """
+        Метод получения конфигурации сканирования
+
+        :param config_id: Идентификатор конфига
+        :return: Конфигурация скнирования
+        """
+
+        with ServiceDB() as service_db:
+            scan_config = service_db.get_project_config(config_id)
+
+        return scan_config
+
+    @staticmethod
     def get_all_configs() -> list[ScanConfigGetDTO]:
         """
         Метод получения всех конфигов сканирования
@@ -53,7 +72,8 @@ class ScannerService:
 
         return scan_configs
 
-    def add_config(self, create_config_schema: CreateScanConfigSchema) -> CreateScanConfigSchema:
+    @staticmethod
+    def add_config(create_config_schema: ScanConfigAddDTO) -> AddItemResponseDTO:
         """
         Метод добавления новой конфигурации
 
@@ -61,10 +81,24 @@ class ScannerService:
         :return: Созданная конфигурация
         """
 
-        with ServiceDB(self.service_db_path) as service_db:
-            service_db.add_scan_config(create_config_schema)
+        with ServiceDB() as service_db:
+            response = service_db.add_scan_config(create_config_schema)
 
-        return create_config_schema
+        return response
+
+    @staticmethod
+    def add_proj_config(create_config_schema: ProjectConfigAddDTO) -> AddItemResponseDTO:
+        """
+        Метод добавления новой конфигурации
+
+        :param create_config_schema: Новая конфигурация
+        :return: Созданная конфигурация
+        """
+
+        with ServiceDB() as service_db:
+            response = service_db.add_scan_project_config(create_config_schema)
+
+        return response
 
     def update_config(self, config_id: int | str, update_config_schema: UpdateScanConfigSchema) -> UpdateScanConfigSchema:
         """
@@ -148,7 +182,7 @@ class ScannerService:
         return vulner_data
 
     @staticmethod
-    def get_vulners(page: int = 1, page_size = 20) -> list[VulnerBasicGetDTO]:
+    def get_vulners(page: int = 1, page_size: int = 20) -> VulnersBasicsGetDTO:
         with ServiceDB() as service_db:
             vulners_data = service_db.get_vulners(page, page_size)
 

@@ -10,6 +10,36 @@ TIMESTAMP_FORMAT = '%d_%m_%Y_%H_%M_%S'
 class Base(DeclarativeBase):
     pass
 
+class ReportORM(Base):
+    __tablename__ = 'reports'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[str] = mapped_column(String(), default=datetime.now().strftime(TIMESTAMP_FORMAT))
+
+    scan_config_id: Mapped[int] = mapped_column(ForeignKey('scan_configs.id', ondelete='SET NULL'))
+    # scan_config: Mapped['ScanConfigORM'] = relationship()
+
+    # vulners: Mapped[list['VulnerORM']] = relationship()
+    def __repr__(self):
+        return f'ReportORM: {self.id=}, {self.created_at=}, {self.scan_config_id=}'
+
+
+class ProjectConfigORM(Base):
+    __tablename__ = 'project_configs'
+
+    # project_config_name: Mapped[str] = mapped_column()
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String())
+    type: Mapped[str] = mapped_column(String())
+    dir_path: Mapped[str] = mapped_column(String())
+    description: Mapped[str | None] = mapped_column(String())
+    scan_config_id: Mapped[int] = mapped_column(ForeignKey('scan_configs.id', ondelete='CASCADE'))
+
+    scan_config: Mapped['ScanConfigORM'] = relationship()
+
+    def __repr__(self):
+        return f'ProjectConfigORM: {self.id=}, {self.name}, {self.type}, {self.description}'
+
 
 class ScanConfigORM(Base):
     __tablename__ = 'scan_configs'
@@ -22,38 +52,15 @@ class ScanConfigORM(Base):
     description: Mapped[str | None] = mapped_column(String())
     date: Mapped[str] = mapped_column(String(), default=datetime.now().strftime(TIMESTAMP_FORMAT))
     port: Mapped[str | None] = mapped_column(String())
+
+    # reports: Mapped[list['ReportORM']] = relationship()
+    projects: Mapped[list['ProjectConfigORM']] = relationship()
     # report_type: Mapped[str] = mapped_column(String())
 
     def __repr__(self):
         return f'ScanConfigORM: {self.id=}, {self.name}, {self.description}, {self.date}'
 
 
-class ProjectConfigORM(Base):
-    __tablename__ = 'project_configs'
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    # project_config_name: Mapped[str] = mapped_column()
-    name: Mapped[str] = mapped_column(String())
-    type: Mapped[str] = mapped_column(String())
-    dir_path: Mapped[str] = mapped_column(String())
-    description: Mapped[str | None] = mapped_column(String())
-    scan_config_id: Mapped[int] = mapped_column(ForeignKey('scan_configs.id', ondelete='CASCADE'))
-
-    def __repr__(self):
-        return f'ProjectConfigORM: {self.id=}, {self.name}, {self.type}, {self.description}'
-
-
-class ReportORM(Base):
-    __tablename__ = 'reports'
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    created_at: Mapped[str] = mapped_column(String(), default=datetime.now().strftime(TIMESTAMP_FORMAT))
-
-    scan_config_id: Mapped[int] = mapped_column(ForeignKey('scan_configs.id', ondelete='SET NULL'))
-
-    # vulners: Mapped[list['VulnerORM']] = relationship()
-    def __repr__(self):
-        return f'ReportORM: {self.id=}, {self.created_at=}, {self.scan_config_id=}'
 
 class AffectedProjectsORM(Base):
     __tablename__ = 'affected_projects'

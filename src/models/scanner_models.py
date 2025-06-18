@@ -1,5 +1,14 @@
 from pydantic import BaseModel
 
+class ProjectConfigAddDTO(BaseModel):
+    name: str | None
+    type: str | None
+    dir_path: str | None
+    description: str | None = None
+    scan_config_id: int
+
+class ProjectConfigGetDTO(ProjectConfigAddDTO):
+    id: int
 
 class ScanConfigAddDTO(BaseModel):
     name: str
@@ -13,16 +22,8 @@ class ScanConfigAddDTO(BaseModel):
 
 class ScanConfigGetDTO(ScanConfigAddDTO):
     id: int
-
-class ProjectConfigAddDTO(BaseModel):
-    name: str | None
-    type: str | None
-    dir_path: str | None
-    description: str | None = None
-    scan_config_id: int
-
-class ProjectConfigGetDTO(ProjectConfigAddDTO):
-    id: int
+    projects: list['ProjectConfigGetDTO']
+    # reports: list['ReportGetDTO']
 
 class AffectedDTO(BaseModel):
     name: str
@@ -67,9 +68,9 @@ class VulnerGetDTO(BaseModel):
     source_name: str | None
     source_url: str | None = None
 
-    affected: list[AffectedGetDTO] | None = None
-    ratings: list[RatingGetDTO] | None = None
-    references: list[ReferenceGetDTO] | None = None
+    affected: list['AffectedGetDTO'] | None = None
+    ratings: list['RatingGetDTO'] | None = None
+    references: list['ReferenceGetDTO'] | None = None
 
 class VulnerBasicGetDTO(BaseModel):
     global_identifier: str
@@ -78,6 +79,10 @@ class VulnerBasicGetDTO(BaseModel):
     source_url: str | None = None
     score: float | None = None
     severity: str | None = None
+
+class VulnersBasicsGetDTO(BaseModel):
+    vulners: list['VulnerBasicGetDTO']
+    count: int
 
 class ReportProjectDTO(BaseModel):
     id: int
@@ -89,28 +94,29 @@ class AffectedVulnerDTO(AffectedDTO):
 
 class ProjectVulnersGetDTO(BaseModel):
     project_id: int
-    affected: list[AffectedVulnerDTO]
+    affected: list['AffectedVulnerDTO']
 
 class ReportAddDTO(BaseModel):
     scan_config_id: int
-    projects: list[AffectedProjectDTO] | None
+    projects: list['AffectedProjectDTO'] | None
 
 class ReportGetDTO(BaseModel):
     id: int
     created_at: str | None
-    # projects: list[ProjectVulnersGetDTO] | None
-    # dir_path: str | None
-    # description: str | None = None
     scan_config_id: int
+    # scan_config: 'ScanConfigGetDTO'
 
 class ReportAffectDTO(BaseModel):
-    affected: AffectedGetDTO
-    vulner: VulnerGetDTO
+    affected: 'AffectedGetDTO'
+    vulner: 'VulnerGetDTO'
 
 class ReportProjectAffectsDTO(BaseModel):
     project: ProjectConfigGetDTO
-    affects: list[ReportAffectDTO]
+    affects: list['ReportAffectDTO']
 
 class ReportFullDTO(ReportGetDTO):
     affects_projects: list[ReportProjectAffectsDTO]
-    scan_config: ScanConfigGetDTO
+    scan_config: 'ScanConfigGetDTO'
+
+class AddItemResponseDTO(BaseModel):
+    created_item_id: int

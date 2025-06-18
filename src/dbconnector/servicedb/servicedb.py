@@ -5,6 +5,7 @@
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import Session, sessionmaker, joinedload
 from sqlalchemy.engine.base import Engine
+from sqlalchemy.sql.expression import func
 
 from dbconnector.servicedb.functions import get_db_engine
 from dbconnector.servicedb.models import (
@@ -31,9 +32,11 @@ from models.scanner_models import (
     VulnerGetDTO,
     ReferenceGetDTO,
     RatingGetDTO,
+    AddItemResponseDTO,
     AffectedGetDTO,
     ReportAffectDTO,
     VulnerBasicGetDTO,
+    VulnersBasicsGetDTO,
 )
 
 
@@ -67,11 +70,37 @@ class ServiceDB:
     def create_db_and_tables(self) -> None:
         Base.metadata.create_all(self.engine)
 
+    def add_scan_config(self, create_config_schema: ScanConfigAddDTO) -> AddItemResponseDTO:
+        scan_conf_model = ScanConfigORM(
+            name=create_config_schema.name,
+            host=create_config_schema.host,
+            user=create_config_schema.user,
+            secret=create_config_schema.secret,
+            description=create_config_schema.description,
+            date=create_config_schema.date,
+            port=create_config_schema.port,
+        )
+        self.session.add(scan_conf_model)
+        self.session.commit()
+
+        return AddItemResponseDTO(created_item_id=scan_conf_model.id)
+
+    def add_scan_project_config(self, create_project_config_schema: ProjectConfigAddDTO) -> AddItemResponseDTO:
+        scan_projects_conf_model = ProjectConfigORM(
+            name=create_project_config_schema.name,
+            type=create_project_config_schema.type,
+            dir_path=create_project_config_schema.dir_path,
+            description=create_project_config_schema.description,
+        )
+        self.session.add(scan_projects_conf_model)
+        self.session.commit()
+
+        return AddItemResponseDTO(created_item_id=scan_projects_conf_model.id)
 
     def get_all_scan_configs(self) -> list[ScanConfigGetDTO]:
         """Метод получения всех конфигураций сканирования"""
 
-        statement = select(ScanConfigORM)
+        statement = select(ScanConfigORM).order_by(ScanConfigORM.date.desc())
         scan_confs_data = self.session.scalars(statement).all()
 
         result_confs_dto = [ScanConfigGetDTO.model_validate(row, from_attributes=True) for row in scan_confs_data]
@@ -234,10 +263,10 @@ class ServiceDB:
         vulner_dto = VulnerGetDTO.model_validate(vulner_data, from_attributes=True)
         return vulner_dto
 
-
-    def get_vulners(self, page: int = 1, page_size = 20) -> list[VulnerBasicGetDTO]:
-        statement = select(VulnerORM).limit(page_size).offset(page * page_size)
-        # query = statement
+    def get_vulners(self, page: int = 1, page_size: int = 20) -> VulnersBasicsGetDTO:
+        offset = (page - 1) * page_size
+        statement = select(VulnerORM).order_by(VulnerORM.global_identifier.desc()).limit(page_size).offset(offset)
+        query_count = self.session.query(VulnerORM.global_identifier).count()
         vulners_data = self.session.scalars(statement).all()
 
         vulners_dto = []
@@ -259,7 +288,10 @@ class ServiceDB:
             )
             vulners_dto.append(prepared_model)
 
-        return vulners_dto
+        return VulnersBasicsGetDTO(
+            vulners=vulners_dto,
+            count=query_count,
+        )
 
 
 def main():
