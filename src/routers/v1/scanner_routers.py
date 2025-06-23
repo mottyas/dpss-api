@@ -19,6 +19,7 @@ from models.scanner_models import (
     ScanConfigAddDTO,
     AddItemResponseDTO,
     ProjectConfigGetDTO,
+    ProjectConfigAddDTO,
     VulnerBasicGetDTO,
 )
 from services.scanner_service import ScannerService
@@ -62,7 +63,7 @@ def make_new_scan_config(
         scan_conf_schema: ScanConfigAddDTO,
         scanner_service: ScannerService = Depends(),
 ):
-    print(f'{scan_conf_schema=}')
+    # print(f'{scan_conf_schema=}')
     logging.error(f'{scan_conf_schema=}')
     return scanner_service.add_config(scan_conf_schema)
 
@@ -79,6 +80,14 @@ def update_scan_config_by_id(
         scanner_service: ScannerService = Depends(),
 ):
     return scanner_service.update_config(item_id, scan_conf_schema)
+
+
+@scanner_router.post(path='/projects', response_model=AddItemResponseDTO)
+def update_scan_config_by_id(
+        scan_conf_schema: ProjectConfigAddDTO,
+        scanner_service: ScannerService = Depends(),
+):
+    return scanner_service.add_proj_config(scan_conf_schema)
 
 @scanner_router.get(path='/reports/id/{item_id}', response_model=ReportFullDTO)
 def get_report_by_id(item_id: int, scanner_service: ScannerService = Depends()):
@@ -106,15 +115,15 @@ def get_vulners(page: int = 1, page_size: int = 20, scanner_service: ScannerServ
 #     return scanner_service.update_config(name, scan_conf_schema)
 
 
-@scanner_router.post(path='/run', response_model=ReportModelSchema)
-def run_scanner(
-        scan_conf_schema: ScanConfigSchema,
-        scanner_service: ScannerService = Depends(),
-):
-    return scanner_service.run_scanner(scan_config=scan_conf_schema)
+# @scanner_router.post(path='/run', response_model=ReportModelSchema)
+# def run_scanner(
+#         scan_conf_schema: ScanConfigSchema,
+#         scanner_service: ScannerService = Depends(),
+# ):
+#     return scanner_service.run_scanner(scan_config=scan_conf_schema)
 
 
-@scanner_router.post(path='/run/{scan_config_id}', response_model=ReportModelSchema)
+@scanner_router.post(path='/run/{scan_config_id}', response_model=AddItemResponseDTO)
 def run_scanner_by_id(
         scan_config_id: int,
         scanner_service: ScannerService = Depends(),

@@ -1,11 +1,15 @@
 """
 Модуль работы с сервисной базой данных
 """
+import logging
 
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import Session, sessionmaker, joinedload
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.sql.expression import func
+
+from dpss.models import SoftComponentSchema, VulnerableIntervalSchema, VersionBorder
+from dpss.utils import check_is_vulnerable
 
 from dbconnector.servicedb.functions import get_db_engine
 from dbconnector.servicedb.models import (
@@ -91,6 +95,7 @@ class ServiceDB:
             type=create_project_config_schema.type,
             dir_path=create_project_config_schema.dir_path,
             description=create_project_config_schema.description,
+            scan_config_id=create_project_config_schema.scan_config_id,
         )
         self.session.add(scan_projects_conf_model)
         self.session.commit()
@@ -156,7 +161,7 @@ class ServiceDB:
         result_confs_dto = [ReportGetDTO.model_validate(row, from_attributes=True) for row in reports_data]
         return result_confs_dto
 
-    def save_report(self, report_data: ReportAddDTO) -> None:
+    def save_report(self, report_data: ReportAddDTO) -> int:
         report_model = ReportORM(scan_config_id=report_data.scan_config_id)
         self.session.add(report_model)
         self.session.commit()
@@ -165,20 +170,22 @@ class ServiceDB:
         for affected_project in report_data.projects:
             addition_rows.append(
                 ReportProjectORM(
-                    project_config_id=affected_project.project_id,
+                    project_config_id=affected_project.project_config_id,
                     report_id=report_model.id,
                 )
             )
-            for affected_id in affected_project.affected:
-                addition_rows.append(
-                    AffectedProjectsORM(
-                        project_config_id=affected_project.project_id,
-                        affected_id=affected_id,
-                    )
+
+        for affected_project in report_data.projects:
+            addition_rows.append(
+                AffectedProjectsORM(
+                    project_config_id=affected_project.project_config_id,
+                    affected_id=affected_project.affected_id,
                 )
+            )
 
         self.session.add_all(addition_rows)
         self.session.commit()
+        return report_model.id
 
     def get_report(self, report_id: int) -> ReportFullDTO | None:
         statement = select(ReportORM).where(ReportORM.id == report_id)
@@ -187,11 +194,11 @@ class ServiceDB:
 
         statement = select(ScanConfigORM).where(ScanConfigORM.id == result_base_report_dto.scan_config_id)
         scan_config_data = self.session.scalars(statement).one()
-        print(f'{scan_config_data=}')
+        # print(f'{scan_config_data=}')
 
         scan_config_dto = ScanConfigGetDTO.model_validate(scan_config_data, from_attributes=True)
 
-        print(f'{scan_config_dto=}')
+        # print(f'{scan_config_dto=}')
 
         statement = (
             select(ReportProjectORM)
@@ -199,18 +206,14 @@ class ServiceDB:
         )
         reports_projects_data = self.session.scalars(statement).all()
 
-        print(f'{reports_projects_data=}')
-
-        projects_ids = [
-            ReportProjectDTO.model_validate(row, from_attributes=True)
-            for row in reports_projects_data
-        ]
-
-        print(f'{projects_ids=}')
+        projects_ids = [row.project_config_id for row in reports_projects_data]
+        projects_ids = set(projects_ids)
 
         affects_projects = []
-        for project in projects_ids:
-            project_id = project.project_config_id
+        logging.error(f'{len(projects_ids)=}')
+
+        for project_id in projects_ids:
+            # project_id = project.project_config_id
             statement = (
                 select(AffectedProjectsORM)
                 .where(AffectedProjectsORM.project_config_id == project_id)
@@ -219,7 +222,7 @@ class ServiceDB:
             project_data = self.get_project_config(project_id)
 
             affected_projects_data = self.session.scalars(statement).all()
-            print(f'{affected_projects_data=}')
+            # print(f'{affected_projects_data=}')
             affected_projects = [
                 AffectedProjectDTO.model_validate(row, from_attributes=True)
                 for row in affected_projects_data
@@ -245,6 +248,8 @@ class ServiceDB:
                 )
             )
 
+        print(f'{len(affects_projects)=}')
+        logging.error(f'{len(affects_projects)=}')
         report = ReportFullDTO(
             id=result_base_report_dto.id,
             created_at=result_base_report_dto.created_at,
@@ -254,7 +259,7 @@ class ServiceDB:
 
         )
 
-        print(f'{report=}')
+        # print(f'{report=}')
         return report
 
     def get_vulner_data(self, vulner_id: str) -> VulnerGetDTO:
@@ -292,6 +297,60 @@ class ServiceDB:
             vulners=vulners_dto,
             count=query_count,
         )
+
+    @staticmethod
+    def delete_scan_config(scan_config: int) -> int:
+        delete(ScanConfigORM).where(ScanConfigORM.id == scan_config)
+        return scan_config
+
+    # def save_affected_projects(self, project_id: int, affected_ids: list[int]) -> None:
+    #     self.session.add_all(
+    #         [
+    #             AffectedProjectsORM(
+    #                 project_config_id=project_id,
+    #                 affected_id=affected_id,
+    #             )
+    #             for affected_id in affected_ids
+    #         ]
+    #     )
+    #     self.session.commit()
+
+    def find_vulnerable_software(self, components: list[SoftComponentSchema]) -> list[int]:
+
+        result = set()
+
+        components_names = [component.name for component in components]
+        statement = select(AffectedORM).filter(AffectedORM.name.in_(components_names))
+        affects = self.session.scalars(statement).all()
+        for component in components:
+            for affect in affects:
+                # print(f'{component.version=}')
+                # print(f'{affect.start_condition=}\t{affect.start_value=}\t{affect.end_value=}\t{affect.end_condition=}')
+                try:
+
+                    is_vulnerable = check_is_vulnerable(
+                        pkg_version=component.version,
+                        vulnerable_interval=VulnerableIntervalSchema(
+                            left_border=VersionBorder(affect.start_condition),
+                            left_version=affect.start_value,
+                            right_version=affect.end_value if affect.end_value != 'inf' else '9999999',
+                            right_border=VersionBorder(affect.end_condition),
+                        )
+                    )
+                except TypeError as err:
+                    print(f'Unprocessable version: {err}')
+                    continue
+
+                if not is_vulnerable:
+                    continue
+
+                result.add(affect.id)
+                # if not result.get(affect.id):
+                #     result[affect.id] = []
+                #
+                # result[affect.id].append(affect.vulner_id)
+
+        return sorted(result)
 
 
 def main():

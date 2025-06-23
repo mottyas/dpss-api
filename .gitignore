@@ -184,3 +184,6 @@ dbcreator/
 
 # DB creator app dir
 databases/
+
+# Внешние библиотеки
+external_packages/

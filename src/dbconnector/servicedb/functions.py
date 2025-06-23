@@ -11,4 +11,4 @@ def get_db_engine(connection_string: str = SERVICE_DB_CONNECTION_STRING) -> Engi
     :return: Движок базы данных
     """
 
-    return db.create_engine(connection_string, echo=True)
+    return db.create_engine(connection_string, echo=False)

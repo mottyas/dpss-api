@@ -1,11 +1,14 @@
 FROM python:3.12
 
-COPY . /app
+COPY ./src /app
 
 COPY ./requirements.txt /requirements.txt
 
-RUN pip install -r /requirements.txt --no-cache-dir
+COPY ./external_packages /external_packages
 
-EXPOSE 8000
+RUN pip install -r /requirements.txt --no-cache-dir
+RUN pip install /external_packages/dpss-0.0.0-py3-none-any.whl
+
+EXPOSE 5000
 
 ENTRYPOINT ["python", "/app/main.py"]
